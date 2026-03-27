@@ -1,4 +1,5 @@
 import path from 'path'
+import { execSync } from 'child_process'
 import { ConfigOptions } from '../contracts/types/ConfigOptions'
 import { ClientType } from '../contracts/types/ClientType'
 
@@ -41,16 +42,30 @@ export class Config {
   }
 
   private getDataDir(options?: ConfigOptions): string {
-    // Determine the base directory
-    const baseDir = options?.projectRoot ?? this.getValidatedClaudeProjectDir()
+    const baseDir =
+      options?.projectRoot ??
+      this.getGitRoot() ??
+      this.getValidatedClaudeProjectDir()
 
-    // If we have a base directory, construct the full path
     if (baseDir) {
       return path.join(baseDir, DEFAULT_DATA_DIR)
     }
 
-    // Default to relative path
     return DEFAULT_DATA_DIR
+  }
+
+  private getGitRoot(): string | null {
+    try {
+      return (
+        // eslint-disable-next-line sonarjs/no-os-command-from-path
+        execSync('git rev-parse --show-toplevel', {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim() || null
+      )
+    } catch {
+      return null
+    }
   }
 
   private getUseSystemClaude(options?: ConfigOptions): boolean {

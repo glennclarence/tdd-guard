@@ -15,8 +15,8 @@ def test_plugin_accepts_config_parameter():
     # Plugin should accept config parameter without error
     plugin = TDDGuardPytestPlugin(config)
     
-    # Default behavior - should still use default storage dir
-    assert plugin.storage_dir == DEFAULT_DATA_DIR
+    # In a git repo, git root is used as fallback
+    assert str(plugin.storage_dir).endswith(str(DEFAULT_DATA_DIR))
 
 
 def test_plugin_uses_configured_project_root():

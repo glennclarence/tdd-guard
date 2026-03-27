@@ -13,7 +13,8 @@ class TestTDDGuardPytestPlugin:
         """Plugin should initialize with empty test results."""
         plugin = TDDGuardPytestPlugin()
         assert plugin.test_results == []
-        assert plugin.storage_dir == DEFAULT_DATA_DIR
+        # In a git repo, storage_dir resolves to git root + DEFAULT_DATA_DIR
+        assert str(plugin.storage_dir).endswith(str(DEFAULT_DATA_DIR))
 
     def test_pytest_runtest_logreport_captures_passed_test(self):
         """Should capture passed test results."""
@@ -114,8 +115,8 @@ class TestTDDGuardPytestPlugin:
         # Verify directory was created
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
         
-        # Verify file was opened for writing
-        mock_file.assert_called_once_with(DEFAULT_DATA_DIR / 'test.json', 'w')
+        # Verify file was opened for writing at the storage_dir location
+        mock_file.assert_called_once_with(plugin.storage_dir / 'test.json', 'w')
         
         # Get the data that was written
         written_data = ''.join(call.args[0] for call in mock_file().write.call_args_list)

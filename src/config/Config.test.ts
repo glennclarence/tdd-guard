@@ -28,9 +28,11 @@ describe('Config', () => {
       config = new Config({ projectRoot })
     })
 
-    test('defaults to relative path when no projectRoot provided', () => {
+    test('uses git root when no projectRoot provided (inside a git repo)', () => {
+      delete process.env.CLAUDE_PROJECT_DIR
       const defaultConfig = new Config()
-      expect(defaultConfig.dataDir).toBe(DEFAULT_DATA_DIR)
+      expect(path.isAbsolute(defaultConfig.dataDir)).toBe(true)
+      expect(defaultConfig.dataDir).toContain(DEFAULT_DATA_DIR)
     })
 
     test('uses projectRoot to construct absolute dataDir', () => {
@@ -69,6 +71,24 @@ describe('Config', () => {
       )
     })
 
+    describe('git root fallback', () => {
+      test('uses git root when no projectRoot or CLAUDE_PROJECT_DIR is provided', () => {
+        delete process.env.CLAUDE_PROJECT_DIR
+        const gitRootConfig = new Config()
+        expect(path.isAbsolute(gitRootConfig.dataDir)).toBe(true)
+        expect(gitRootConfig.dataDir).toContain(DEFAULT_DATA_DIR)
+      })
+
+      test('projectRoot option takes precedence over git root', () => {
+        delete process.env.CLAUDE_PROJECT_DIR
+        const explicitRoot = '/explicit/project/root'
+        const configWithExplicitRoot = new Config({ projectRoot: explicitRoot })
+        expect(configWithExplicitRoot.dataDir).toBe(
+          path.join(explicitRoot, DEFAULT_DATA_DIR)
+        )
+      })
+    })
+
     describe('CLAUDE_PROJECT_DIR', () => {
       let originalCwd: typeof process.cwd
 
@@ -81,16 +101,15 @@ describe('Config', () => {
         delete process.env.CLAUDE_PROJECT_DIR
       })
 
-      test('uses CLAUDE_PROJECT_DIR when available and no projectRoot provided', () => {
+      test('git root takes precedence over CLAUDE_PROJECT_DIR in a git repo', () => {
         const claudeProjectDir = '/claude/project/root'
         process.env.CLAUDE_PROJECT_DIR = claudeProjectDir
         process.cwd = () => '/claude/project/root/src'
 
         const configWithClaudeDir = new Config()
 
-        expect(configWithClaudeDir.dataDir).toBe(
-          path.join(claudeProjectDir, DEFAULT_DATA_DIR)
-        )
+        expect(path.isAbsolute(configWithClaudeDir.dataDir)).toBe(true)
+        expect(configWithClaudeDir.dataDir).toContain(DEFAULT_DATA_DIR)
       })
 
       test('projectRoot option takes precedence over CLAUDE_PROJECT_DIR', () => {
@@ -105,41 +124,43 @@ describe('Config', () => {
         )
       })
 
-      test('throws error when CLAUDE_PROJECT_DIR is not an absolute path', () => {
+      test('ignores invalid CLAUDE_PROJECT_DIR when git root is available', () => {
         process.env.CLAUDE_PROJECT_DIR = 'relative/path'
 
-        expect(() => new Config()).toThrow(
-          'CLAUDE_PROJECT_DIR must be an absolute path'
-        )
+        // Git root resolves first, so invalid CLAUDE_PROJECT_DIR is never reached
+        const configWithInvalidDir = new Config()
+        expect(path.isAbsolute(configWithInvalidDir.dataDir)).toBe(true)
+        expect(configWithInvalidDir.dataDir).toContain(DEFAULT_DATA_DIR)
       })
 
-      test('throws error when cwd is outside CLAUDE_PROJECT_DIR', () => {
+      test('uses git root when cwd is outside CLAUDE_PROJECT_DIR', () => {
         process.env.CLAUDE_PROJECT_DIR = '/project/root'
         process.cwd = () => '/some/other/path'
 
-        expect(() => new Config()).toThrow(
-          'CLAUDE_PROJECT_DIR must contain the current working directory'
-        )
+        // Git root resolves before CLAUDE_PROJECT_DIR is checked
+        const configWithOutsideCwd = new Config()
+        expect(path.isAbsolute(configWithOutsideCwd.dataDir)).toBe(true)
+        expect(configWithOutsideCwd.dataDir).toContain(DEFAULT_DATA_DIR)
       })
 
-      test('uses CLAUDE_PROJECT_DIR when cwd is deeply nested within it', () => {
+      test('uses git root when cwd is deeply nested', () => {
         process.env.CLAUDE_PROJECT_DIR = '/project/root'
         process.cwd = () => '/project/root/src/nested/deeply'
 
+        // Git root resolves before CLAUDE_PROJECT_DIR is checked
         const configWithNestedCwd = new Config()
-
-        expect(configWithNestedCwd.dataDir).toBe(
-          '/project/root/.claude/tdd-guard/data'
-        )
+        expect(path.isAbsolute(configWithNestedCwd.dataDir)).toBe(true)
+        expect(configWithNestedCwd.dataDir).toContain(DEFAULT_DATA_DIR)
       })
 
-      test('throws error when CLAUDE_PROJECT_DIR contains path traversal', () => {
+      test('uses git root even with path traversal in CLAUDE_PROJECT_DIR', () => {
         process.env.CLAUDE_PROJECT_DIR = '/some/path/../../../other'
         process.cwd = () => '/other/location'
 
-        expect(() => new Config()).toThrow(
-          'CLAUDE_PROJECT_DIR must not contain path traversal'
-        )
+        // Git root resolves before CLAUDE_PROJECT_DIR is checked
+        const configWithTraversal = new Config()
+        expect(path.isAbsolute(configWithTraversal.dataDir)).toBe(true)
+        expect(configWithTraversal.dataDir).toContain(DEFAULT_DATA_DIR)
       })
     })
   })

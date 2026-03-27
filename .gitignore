@@ -91,3 +91,4 @@ docs/internal/
 target/
 **/*.rs.bk
 *.pdb
+.claude_custom/

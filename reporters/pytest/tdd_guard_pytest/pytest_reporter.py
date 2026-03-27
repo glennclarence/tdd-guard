@@ -25,21 +25,37 @@ class TDDGuardPytestPlugin:
     def _determine_storage_dir(self, config, cwd):
         """Determine the storage directory based on config and current working directory."""
         current_dir = cwd if cwd is not None else Path.cwd()
-        
+
         # Try to get project root from config
         project_root = self._get_project_root_from_config(config)
+
+        if not project_root:
+            project_root = self._get_git_root()
+
         if not project_root:
             return DEFAULT_DATA_DIR
-        
+
         # Validate that it's an absolute path
         if not os.path.isabs(project_root):
             return DEFAULT_DATA_DIR
-        
+
         # Validate that cwd is within project root
         if self._is_cwd_within_project_root(current_dir, project_root):
             return Path(project_root) / DEFAULT_DATA_DIR
         else:
             return DEFAULT_DATA_DIR
+
+    def _get_git_root(self):
+        """Get the git repository root directory."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                capture_output=True, text=True, timeout=5
+            )
+            return result.stdout.strip() if result.returncode == 0 else None
+        except Exception:
+            return None
     
     def _get_project_root_from_config(self, config):
         """Extract project root from config if available."""
