@@ -1,12 +1,12 @@
 {
-  "name": "tdd-guard-vitest",
+  "name": "@glennclarence/tdd-guard-vitest",
   "version": "0.1.6",
   "description": "Vitest reporter for TDD Guard",
   "author": "Nizar Selander",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nizos/tdd-guard.git",
+    "url": "git+https://github.com/glennclarence/tdd-guard.git",
     "directory": "reporters/vitest"
   },
   "main": "dist/index.js",
