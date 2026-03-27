@@ -92,3 +92,9 @@ target/
 **/*.rs.bk
 *.pdb
 .claude_custom/
+
+# Allow reporter dist/ dirs for GitHub installs (no build step needed)
+!reporters/vitest/dist/
+!reporters/jest/dist/
+!reporters/storybook/dist/
+reporters/*/dist/*.test-data.*
